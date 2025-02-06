@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>점심 메뉴 추천</title>
+  </head>
+  <body>
+    <header>
+      <button id="resetButton">저장된 데이터 리셋</button>
+    </header>
+    <form id="controller">
+      <label>
+        모델 :
+        <select name="modelOption">
+          <option value="1">gemini-1.5-flash</option>
+          <option value="2">deepseek-r1</option>
+        </select>
+      </label>
+      <textarea name="textData"></textarea>
+      <button>등록</button>
+    </form>
+    <div id="container"></div>
+    <script>
+      const _ = () => {
+        const container = document.querySelector("#container");
+        const form = document.querySelector("#controller");
+        const resetButton = document.querySelector("#resetButton");
+        resetButton.addEventListener("click", () => (data.length = 0));
+        const data = new Proxy([], {
+          set(target, property, value) {
+            target[property] = value;
+            updateContainer();
+            updateStorage(target);
+            return true;
+          },
+        });
+
+        function onMounted() {
+          data.push(...(JSON.parse(localStorage.getItem("myData")) ?? []));
+        }
+        onMounted();
+
+        function updateContainer() {
+          container.innerHTML = "";
+          for (const d of data) {
+            const tmp = document.createElement("div");
+            tmp.textContent = d.text;
+            const deleteButton = document.createElement("button");
+            deleteButton.textContent = "삭제";
+            deleteButton.addEventListener("click", () => {
+              const filtered = data.filter((value) => value.id !== d.id);
+              data.length = 0;
+              data.push(...filtered);
+            });
+            if (d.reply) {
+              const box = document.createElement("div");
+              const reply = document.createElement("code");
+              box.appendChild(reply);
+              box.style.padding = "12px";
+              box.style.margin = "4px";
+              box.style.backgroundColor = "beige";
+              box.style.border = "1px solid black";
+              reply.textContent = d.reply;
+              tmp.appendChild(box);
+            }
+            tmp.appendChild(deleteButton);
+            container.appendChild(tmp);
+          }
+        }
+
+        function updateStorage(target) {
+          localStorage.setItem("myData", JSON.stringify(target));
+        }
+
+        async function handleForm(event) {
+          event.preventDefault();
+          const formData = new FormData(form);
+          const text = formData.get("textData");
+          let reply;
+          switch (formData.get("modelOption")) {
+            case "1":
+              reply = `👬 Gemini : ${await makeReply(text)}`;
+              break;
+            case "2":
+              reply = `👀 DeepSeek : ${await makeReply2(text)}`;
+              break;
+            default:
+              alert("비정상적인 접근!");
+              throw new Error("알 수 없는 에러!");
+              break;
+          }
+          const displayData = {
+            id: Date.now(),
+            text,
+            reply,
+          };
+          data.push(displayData);
+        }
+
+        async function makeReply(text) {
+            
+  const url = "https://snapdragon-east-sassafras.glitch.me/1"; // 서버의 URL을 사용
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      mode: "no-cors",
+
+      body: JSON.stringify({
+        text: `너는 20년 경력의 메뉴 추천 전문가야. {${text}}의 메시지를 바탕으로, 점심 메뉴를 추천해주고, 50자 이내에 평문으로 작성해줘.`,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    // CORS가 실패하는 경우, 서버 응답이 없다면 알림을 띄운다
+    if (!response.ok) {
+        console.error('HTTP Error:', response.status, response.statusText);
+      throw new Error('CORS 오류 발생');
+    }
+
+    const json = await response.json();
+    return json.reply;
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    alert('메뉴 추천을 받는 중 오류가 발생했습니다. 서버 설정을 확인하세요.');
+  }
+}
+
+async function makeReply2(content) {
+  const url = "https://jumbled-childish-legal.glitch.me/2"; // 서버의 URL을 사용
+  console.log(text);
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify({
+        text: `너는 20년 경력의 메뉴 추천 전문가야. {${content}}의 메시지를 바탕으로, 점심 메뉴를 추천해주고, 50자 이내에 평문으로 작성해줘. 결과는 한글로 작성해줘.`,
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    // CORS가 실패하는 경우, 서버 응답이 없다면 알림을 띄운다
+    if (!response.ok) {
+      throw new Error('CORS 오류 발생');
+    }
+
+    const json = await response.json();
+    return json.reply;
+  } catch (error) {
+    console.error('Error fetching data:', error);
+    alert('메뉴 추천을 받는 중 오류가 발생했습니다. 서버 설정을 확인하세요.');
+  }
+}
+
+        form.addEventListener("submit", handleForm);
+      };
+      window.onload = _;
+    </script>
+  </body>
+</html>
